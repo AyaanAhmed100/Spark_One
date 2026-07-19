@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Spark One</title>
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Highlight.js for Code syntax coloring -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #0f0f0f;
+            --user-msg-bg: #f4f4f4;
+            --code-bg: #0d1117;
+            --code-border: #30363d;
+            --border-light: #e5e5e5;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- Chat Area --- */
+        #chat-container {
+            max-width: 768px;
+            margin: 0 auto;
+            padding: 40px 20px 140px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .header-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #111;
+        }
+        .header-subtitle {
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            margin-top: -15px;
+            margin-bottom: 40px;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user { align-items: flex-end; }
+        .message.user .content {
+            background-color: var(--user-msg-bg);
+            padding: 12px 20px;
+            border-radius: 24px;
+            max-width: 80%;
+            font-size: 15px;
+            white-space: pre-wrap;
+        }
+
+        .message.bot .content {
+            max-width: 100%;
+            font-size: 15px;
+            color: #111;
+        }
+
+        /* --- Markdown & Code Blocks --- */
+        .markdown-body p { margin-top: 0; margin-bottom: 16px; }
+        .markdown-body p:last-child { margin-bottom: 0; }
+        
+        .code-wrapper {
+            background-color: var(--code-bg);
+            border: 1px solid var(--code-border);
+            border-radius: 12px;
+            margin: 20px 0;
+            overflow: hidden;
+            font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace;
+        }
+        .code-header {
+            background-color: #161b22;
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #8b949e;
+            font-size: 12px;
+            border-bottom: 1px solid var(--code-border);
+        }
+        .copy-button {
+            background: none;
+            border: none;
+            color: #8b949e;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            transition: color 0.2s;
+        }
+        .copy-button:hover { color: #c9d1d9; }
+        .code-content pre { margin: 0; padding: 16px; overflow-x: auto; }
+        .code-content code { color: #e6edf3; font-size: 14px; }
+
+        /* --- Thinking Accordion --- */
+        .think-container { margin-bottom: 16px; }
+        .think-accordion {
+            border-left: 3px solid var(--border-light);
+            padding-left: 16px;
+        }
+        .think-accordion summary {
+            list-style: none;
+            cursor: pointer;
+            color: #666;
+            font-weight: 500;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+            transition: color 0.2s;
+        }
+        .think-accordion summary::-webkit-details-marker { display: none; }
+        .think-accordion summary:hover { color: #111; }
+        .think-content {
+            margin-top: 12px;
+            color: #555;
+            font-size: 14px;
+        }
+
+        /* --- Input Area --- */
+        .input-area-wrapper {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #ffffff 25%);
+            padding: 24px 20px 32px 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .input-box {
+            width: 100%;
+            max-width: 768px;
+            background-color: var(--user-msg-bg);
+            border-radius: 26px;
+            display: flex;
+            align-items: flex-end;
+            padding: 10px 14px;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+        .input-box:focus-within {
+            background-color: #ffffff;
+            border: 1px solid var(--border-light);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+        .input-box textarea {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: none;
+            max-height: 200px;
+            outline: none;
+            line-height: 1.5;
+        }
+        .input-box textarea::placeholder { color: #8e8e8e; }
+        
+        .action-btn {
+            background-color: #000;
+            color: #fff;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-bottom: 6px;
+            margin-right: 4px;
+            transition: transform 0.1s;
+        }
+        .action-btn:active { transform: scale(0.95); }
+        .action-btn:disabled { background-color: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <div id="chat-container">
+        <div id="intro">
+            <div class="header-title">Spark One</div>
+            <div class="header-subtitle">Developed by Malik Ayaan Ahmed</div>
+        </div>
+        <!-- Messages will populate here -->
+    </div>
+
+    <div class="input-area-wrapper">
+        <div class="input-box">
+            <textarea id="chat-input" rows="1" placeholder="Message Spark One..."></textarea>
+            <button id="action-btn" class="action-btn">
+                <!-- Send Icon -->
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="19" x2="12" y2="5"></line>
+                    <polyline points="5 12 12 5 19 12"></polyline>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Markdown & Code configuration ---
+        const renderer = {
+            code(code, info) {
+                const validLang = (info && hljs.getLanguage(info)) ? info : 'plaintext';
+                const highlighted = hljs.highlight(validLang, code).value;
+                const encoded = encodeURIComponent(code);
+                return `
+                <div class="code-wrapper">
+                    <div class="code-header">
+                        <span>${validLang}</span>
+                        <button class="copy-button" onclick="copyToClipboard(this, '${encoded}')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            Copy
+                        </button>
+                    </div>
+                    <div class="code-content"><pre><code class="hljs ${validLang}">${highlighted}</code></pre></div>
+                </div>`;
+            }
+        };
+        marked.use({ renderer });
+
+        window.copyToClipboard = function(btn, encodedCode) {
+            const code = decodeURIComponent(encodedCode);
+            navigator.clipboard.writeText(code);
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied!`;
+            setTimeout(() => btn.innerHTML = originalHTML, 2000);
+        }
+
+        // --- 2. Thinking Tag Parser ---
+        function formatMarkdown(raw) {
+            const thinkRegex = /<think>([\s\S]*?)(?:<\/think>|$)/g;
+            let html = raw.replace(thinkRegex, (match, thoughtContent, offset, fullStr) => {
+                const isClosed = fullStr.substring(offset).includes('</think>');
+                const title = isClosed ? 'Thought Process' : 'Thinking...';
+                const parsedThought = marked.parse(thoughtContent);
+                return `
+                <div class="think-container">
+                    <details class="think-accordion" ${isClosed ? '' : 'open'}>
+                        <summary>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                            <span>${title}</span>
+                        </summary>
+                        <div class="think-content markdown-body">${parsedThought}</div>
+                    </details>
+                </div>`;
+            });
+            return marked.parse(html);
+        }
+
+        // --- 3. UI State Management ---
+        const inputEl = document.getElementById('chat-input');
+        const actionBtn = document.getElementById('action-btn');
+        const chatContainer = document.getElementById('chat-container');
+        const intro = document.getElementById('intro');
+        let currentAbortController = null;
+
+        // Auto-expand textarea
+        inputEl.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        // Submit on Enter (Shift+Enter for newline)
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (actionBtn.onclick === sendPrompt) sendPrompt();
+            }
+        });
+
+        function addMessage(role, text) {
+            if (intro) intro.style.display = 'none';
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${role}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'content markdown-body';
+            
+            if (role === 'user') {
+                contentDiv.textContent = text;
+            }
+            
+            msgDiv.appendChild(contentDiv);
+            chatContainer.appendChild(msgDiv);
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            return contentDiv;
+        }
+
+        function toggleActionBtn(state) {
+            if (state === 'stop') {
+                actionBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>';
+                actionBtn.onclick = stopGeneration;
+            } else {
+                actionBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>';
+                actionBtn.onclick = sendPrompt;
+            }
+        }
+        
+        actionBtn.onclick = sendPrompt;
+
+        function stopGeneration() {
+            if (currentAbortController) currentAbortController.abort();
+            toggleActionBtn('send');
+        }
+
+        // --- 4. The Streaming Fetch Logic ---
+        async function sendPrompt() {
+            const text = inputEl.value.trim();
+            if (!text) return;
+            
+            inputEl.value = '';
+            inputEl.style.height = 'auto';
+            
+            addMessage('user', text);
+            const botContentDiv = addMessage('bot', '');
+            
+            toggleActionBtn('stop');
+            currentAbortController = new AbortController();
+            
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text }),
+                    signal: currentAbortController.signal
+                });
+                
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let buffer = "";
+                
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    
+                    // Parse Server-Sent Events (SSE)
+                    let boundary = buffer.indexOf('\n\n');
+                    while (boundary !== -1) {
+                        const payload = buffer.slice(0, boundary);
+                        buffer = buffer.slice(boundary + 2);
+                        
+                        if (payload.startsWith('data: ')) {
+                            const dataStr = payload.slice(6);
+                            if (dataStr === '[DONE]') break;
+                            
+                            try {
+                                const parsed = JSON.parse(dataStr);
+                                if (parsed.error) throw new Error(parsed.error);
+                                
+                                // Render chunk to UI instantly
+                                botContentDiv.innerHTML = formatMarkdown(parsed.text);
+                                window.scrollTo({ top: document.body.scrollHeight });
+                            } catch (e) {}
+                        }
+                        boundary = buffer.indexOf('\n\n');
+                    }
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    botContentDiv.innerHTML += "<br><br><em>Error: Connection to Spark One lost.</em>";
+                }
+            } finally {
+                toggleActionBtn('send');
+            }
+        }
+    </script>
+</body>
+</html>
