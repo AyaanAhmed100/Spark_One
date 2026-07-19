@@ -1,0 +1,11 @@
+{
+  "name": "spark-one-ui",
+  "version": "1.0.0",
+  "description": "Spark One AI Frontend",
+  "scripts": {
+    "start": "echo 'Vercel handles routing'"
+  },
+  "dependencies": {
+    "@gradio/client": "^1.1.2"
+  }
+}
